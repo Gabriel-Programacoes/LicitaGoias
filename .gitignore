@@ -1,0 +1,55 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Packaging/build artifacts
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Playwright/browser artifacts
+playwright-report/
+test-results/
+
+# Generated project data
+data/raw/
+data/exports/
+data/exports_test/
+data/reports/
+*.sqlite
+*.sqlite3
+*.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+tmp/
+temp/
+
+# OS/editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
