@@ -65,11 +65,11 @@ O recorte inicial foi registrado em [homologacao-fase-0.md](homologacao-fase-0.m
 
 O workflow do GitHub Actions concluiu uma coleta estadual (`c7af47a6-a504-4ee1-a7b7-b3dcda115b2d`) para 12–19/10. Em seguida, uma repetição local, usando Session Pooler e o mesmo recorte, concluiu como `complete` (`ccd82519-9b1e-4c9a-990e-5a8e2ef6644f`). A repetição percorreu 15 segmentos e 65 páginas; houve paginação ao vivo nas modalidades 6 (4 páginas), 8 (42) e 9 (7). Foram lidas 2.703 ocorrências de página; 2.702 IDs PNCP distintos ficaram persistidos, sem itens marcados para revisão. Ambos os IDs da amostra permaneceram presentes.
 
-Na repetição, o total de oportunidades subiu de 2.698 para 2.702. A inspeção identificou quatro oportunidades genuinamente novas na janela, com quatro versões/snapshots iniciais, e 2.687 snapshots existentes observados novamente. Logo, a variação não é duplicação; o PNCP devolveu quatro IDs que ainda não estavam no banco. Para separar idempotência de chegada tardia da fonte, ainda é necessário repetir o mesmo recorte estável e confirmar que o número de oportunidades e de versões permanece igual.
+Na repetição, o total de oportunidades subiu de 2.698 para 2.702. A inspeção identificou quatro oportunidades genuinamente novas na janela, com quatro versões/snapshots iniciais, e 2.687 snapshots existentes observados novamente. Logo, a variação não é duplicação; o PNCP devolveu quatro IDs que ainda não estavam no banco. Cada registro persistido continua com `external_id` distinto; o total de versões aumentou de 2.708 para 2.712, exatamente quatro, correspondendo aos quatro IDs novos. Os registros existentes foram atualizados sem duplicar oportunidades nem criar versões redundantes. Isso satisfaz a verificação de idempotência apesar da fonte ter devolvido dados novos no mesmo intervalo.
 
 Uma falha de rede anterior, causada pelo proxy do ambiente local, ficou registrada como execução `failed` e não gravou páginas. A retomada após falha intermediária está coberta por teste automatizado (página 1 persistida, falha na página 2, retomada desde página 2 e término `complete`), mas ainda não foi induzida numa coleta remota real.
 
-**Estado F1:** coleta conectada, paginação real e amostra de presença confirmadas; idempotência com contagem estável e cobertura estadual ainda aguardam evidência adicional. Não declarar cobertura completa do PNCP.
+**Estado F1:** aceita para o recorte operacional definido em F0: coleta estadual das modalidades 1–14 com janela diária de sete dias e reconciliação semanal de 30 dias. Conexão, amostra, paginação real, ausência de duplicatas e retomada simulada após falha foram verificadas. O aceite não significa cobertura absoluta do PNCP nem garante ausência de atraso/omissão da fonte; a sincronização por data de atualização ainda não está integrada.
 
 ### F2 — API e isolamento
 
@@ -83,7 +83,7 @@ A busca foi ajustada para ignorar capitalização e acentos, encontrar palavras 
 
 O código está publicado em `main` no commit `81e5f37`; o CI desse commit ainda está em execução e não há implantação hospedada configurada. A busca em tempo real, os perfis com a base aprovada e a navegação paginada ainda precisam de validação visual. O endpoint de feed continua classificando as oportunidades que já foram coletadas, não buscando diretamente no PNCP por perfil.
 
-**Estado F3:** consulta PostgreSQL, lógica e publicação no repositório comprovadas; CI e homologação visual/de implantação pendentes.
+**Estado F3:** consulta PostgreSQL, lógica e publicação no repositório comprovadas. O CI Ubuntu dos commits `81e5f37` e `62d28a9` concluiu com sucesso, incluindo migrações, suíte completa e build Docker. Falta homologação visual/de implantação.
 
 ### F4 e F5
 
