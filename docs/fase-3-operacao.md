@@ -14,6 +14,8 @@ A primeira implementação da Fase 3 acrescenta:
 
 O feed e a busca livre exibem 30 oportunidades por página por padrão. A API aceita tamanhos de página entre 1 e 100.
 
+Na página inicial, a visualização **Todas** também funciona sem perfil de interesse: ela lista a base coletada e mantém paginação. A visualização **Compatíveis** exige um perfil; sem um, a interface oferece a criação de perfil e não envia uma requisição inválida ao feed.
+
 Na busca livre, cada palavra é procurada nos campos de objeto, informação complementar, órgão, município, modalidade, situação e identificador. A comparação não diferencia maiúsculas/minúsculas nem acentos, e a ordem entre palavras não importa. A interface atualiza a lista após uma pausa curta enquanto o usuário digita; respostas antigas não substituem uma consulta mais recente.
 
 Os critérios do perfil são categorias de licitação mantidas pelo LicitaGoias, além de município, modalidade PNCP, situação e prazo máximo até a abertura. Apenas o nome do perfil aceita digitação. Categoria, município, modalidade, situação e prazo atuam sobre a oportunidade. As categorias são correspondidas pelo texto publicado no objeto e na informação complementar; o sistema não consulta códigos nem itens individuais do edital. Se várias categorias forem selecionadas, basta corresponder a uma delas. Sem categoria, o perfil considera todas as áreas, sujeito aos demais filtros.

@@ -567,9 +567,11 @@ def opportunity_changes(opportunity_id: UUID, user: User = Depends(get_current_u
 
 
 @router.get("/v1/feed")
-def feed(profile_id: UUID = Query(...), page: int = Query(1, ge=1), page_size: int = Query(30, ge=1, le=MAX_PAGE_SIZE),
+def feed(profile_id: UUID | None = Query(default=None), page: int = Query(1, ge=1), page_size: int = Query(30, ge=1, le=MAX_PAGE_SIZE),
          view: str = Query(default="matched", pattern="^(matched|all)$"),
          user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if profile_id is None and view != "all":
+        raise HTTPException(status_code=422, detail="Crie ou selecione um perfil para ver oportunidades compatíveis.")
     return search_opportunities(None, None, None, None, None, page, page_size, profile_id, view, user, db)
 
 

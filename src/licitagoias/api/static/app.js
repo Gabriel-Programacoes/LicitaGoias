@@ -321,21 +321,32 @@
   };
   const loadFeed = async page => {
     feedPage = page; const list = $('#opportunity-list');
-    if (!selectedProfile) {
+    const hasProfile = Boolean(selectedProfile);
+    if (!hasProfile && feedMode !== 'all') {
       $('#result-total').textContent = '—';
       $('#feed-volume').textContent='—'; $('#feed-match').textContent='—'; $('#feed-upcoming').textContent='—';
+      $('#result-total-label').textContent='oportunidades alinhadas ao perfil';
+      $('#feed-subheading').textContent='Crie um perfil para receber oportunidades alinhadas aos interesses da sua empresa ou consulte a base completa.';
+      $('#feed-list-title').textContent='Todas as oportunidades';
+      $('#feed-list-description').textContent='Disponíveis na base coletada';
+      $$('[data-feed-view]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.feedView===feedMode)));
       list.innerHTML = '<div class="empty-state">Configure um perfil para ver oportunidades alinhadas à sua empresa.<br><br><button class="button button-dark" data-act="create-profile"><i class="ti ti-plus" aria-hidden="true"></i> Criar perfil</button></div>';
       $('#pagination').classList.add('hidden'); return;
     }
     list.innerHTML = '<div class="loading-state"><span class="loader"></span> Consultando oportunidades coletadas…</div>';
     try {
-      const result = await api(`/v1/feed?profile_id=${encodeURIComponent(selectedProfile)}&view=${feedMode}&page=${page}&page_size=30`);
+      const profileParam = hasProfile ? `profile_id=${encodeURIComponent(selectedProfile)}&` : '';
+      const result = await api(`/v1/feed?${profileParam}view=${feedMode}&page=${page}&page_size=30`);
       setCoverage(result.coverage); $('#result-total').textContent = result.total.toLocaleString('pt-BR'); $('#dock-feed-count').textContent=result.total.toLocaleString('pt-BR');
       $('#result-total-label').textContent=feedMode==='all'?'oportunidades na base coletada':'compatíveis com o perfil';
       $('#feed-match').textContent=Number(result.matched_total||0).toLocaleString('pt-BR');
-      $('#feed-subheading').textContent=feedMode==='all'?'O perfil organiza os resultados sem ocultar as demais oportunidades.':'Oportunidades classificadas pelos critérios do perfil.';
+      $('#feed-subheading').textContent=!hasProfile?'Oportunidades da base coletada, sem filtro por perfil.':feedMode==='all'?'O perfil organiza os resultados sem ocultar as demais oportunidades.':'Oportunidades classificadas pelos critérios do perfil.';
       $('#feed-list-title').textContent=feedMode==='all'?'Todas as oportunidades':'Oportunidades compatíveis';
-      $('#feed-list-description').textContent=feedMode==='all'?'O perfil classifica, mas não oculta resultados':'Classificadas pelos critérios do perfil';
+      $('#feed-list-description').textContent=!hasProfile?'Sem perfil de interesse aplicado':feedMode==='all'?'O perfil classifica, mas não oculta resultados':'Classificadas pelos critérios do perfil';
+      const matchMetricLabel=$('#feed-match').previousElementSibling;
+      if(matchMetricLabel)matchMetricLabel.innerHTML=`<i class="ti ${hasProfile?'ti-target':'ti-list'}" aria-hidden="true"></i> ${hasProfile?'Compatíveis':'Resultados'}`;
+      const matchMetricNote=$('#feed-match').nextElementSibling;
+      if(matchMetricNote)matchMetricNote.textContent=hasProfile?'na cobertura coletada':'na cobertura coletada';
       $$('[data-feed-view]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.feedView===feedMode)));
       const values=result.items.map(item=>Number((item.data?.valor_estimado&&typeof item.data.valor_estimado==='object'?item.data.valor_estimado.decimal:item.data?.valor_estimado)||0)).filter(Number.isFinite);
       const totalValue=values.reduce((sum,value)=>sum+value,0);$('#feed-volume').textContent=totalValue?totalValue.toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}):'Não informado';

@@ -188,6 +188,13 @@ def test_explore_search_ignores_case_accents_and_paginates(db_factory):
         assert result.json()["total"] == 1
         assert result.json()["items"][0]["external_id"] == "explore-1"
 
+        all_without_profile = client.get("/v1/feed?view=all&page=1&page_size=1")
+        assert all_without_profile.status_code == 200
+        assert all_without_profile.json()["total"] == 3
+        assert len(all_without_profile.json()["items"]) == 1
+        assert all_without_profile.json()["items"][0]["match"] is None
+        assert client.get("/v1/feed?page=1&page_size=1").status_code == 422
+
         first = client.get("/v1/opportunities?page=1&page_size=1").json()
         second = client.get("/v1/opportunities?page=2&page_size=1").json()
         assert first["total"] == second["total"] == 3
