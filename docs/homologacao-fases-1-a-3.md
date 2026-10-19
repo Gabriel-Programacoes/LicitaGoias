@@ -81,9 +81,9 @@ Os testes automatizados exercitam duas identidades e negam leitura/alteração d
 
 A busca foi ajustada para ignorar capitalização e acentos, encontrar palavras em qualquer ordem e atualizar os resultados após 350 ms de pausa na digitação. Os testes locais cobrem o comportamento e a paginação. Também executei a consulta alterada diretamente no PostgreSQL Supabase: `ELETRODOMESTICOS bens` e `eletrodomésticos COMUNS` retornaram o mesmo edital UFG (`01567601000143-1-000276/2026`). Contra a base remota, a paginação de 30 itens retornou 30 itens nas páginas 1 e 2, sem sobreposição; o total era 2.702 oportunidades (91 páginas).
 
-O código ainda precisa ser publicado e a busca em tempo real, os perfis com a base aprovada e a navegação paginada precisam de validação visual na aplicação hospedada. O endpoint de feed continua classificando as oportunidades que já foram coletadas, não buscando diretamente no PNCP por perfil.
+O código está publicado em `main` no commit `81e5f37`; o CI desse commit ainda está em execução e não há implantação hospedada configurada. A busca em tempo real, os perfis com a base aprovada e a navegação paginada ainda precisam de validação visual. O endpoint de feed continua classificando as oportunidades que já foram coletadas, não buscando diretamente no PNCP por perfil.
 
-**Estado F3:** consulta PostgreSQL e lógica comprovadas; publicação e homologação visual ainda pendentes.
+**Estado F3:** consulta PostgreSQL, lógica e publicação no repositório comprovadas; CI e homologação visual/de implantação pendentes.
 
 ### F4 e F5
 
