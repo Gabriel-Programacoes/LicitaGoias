@@ -8,7 +8,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from sqlalchemy import cast, func, or_, select, Text
+from sqlalchemy import and_, cast, func, or_, select, Text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -26,6 +26,8 @@ from licitagoias.phase1_db import (
 router = APIRouter(tags=["opportunities", "interest-profiles", "feedback", "follows"])
 RULESET_VERSION = "rules-v2"
 MAX_PAGE_SIZE = 100
+_ACCENTED_SEARCH_CHARS = "áàâãäåæçéèêëíìîïñóòôõöøúùûüýÿ"
+_PLAIN_SEARCH_CHARS = "aaaaaaac" + "eeee" + "iiii" + "n" + "oooooo" + "uuuu" + "yy"
 
 
 def _normalized(value: Any) -> str:
@@ -417,7 +419,39 @@ def search_opportunities(
             # matcher below checks their official modality label.
             query = query.where(or_(code_match, modality_code.is_(None)))
     if q:
-        query = query.where(cast(OpportunityRecord.current_data, Text).ilike(f"%{_ilike_fragment(q)}%", escape="\\"))
+        # Search each word independently so order and accents do not matter
+        # (e.g. "manutencao computadores" matches "Computadores — manutenção").
+        # Translating in SQL avoids requiring the optional PostgreSQL unaccent
+        # extension on hosted Supabase projects.
+        search_fields = [
+            func.translate(
+                func.lower(OpportunityRecord.current_data[key].as_string()),
+                _ACCENTED_SEARCH_CHARS + _ACCENTED_SEARCH_CHARS.upper(),
+                _PLAIN_SEARCH_CHARS + _PLAIN_SEARCH_CHARS,
+            )
+            for key in (
+                "objeto", "informacao_complementar", "orgao_comprador", "municipio",
+                "modalidade", "status", "numero_processo",
+            )
+        ]
+        search_fields.extend([
+            func.translate(
+                func.lower(value),
+                _ACCENTED_SEARCH_CHARS + _ACCENTED_SEARCH_CHARS.upper(),
+                _PLAIN_SEARCH_CHARS + _PLAIN_SEARCH_CHARS,
+            )
+            for value in (OpportunityRecord.external_id, OpportunityRecord.official_status)
+        ])
+        terms = [_normalized(term) for term in re.findall(r"[\w]+", q, flags=re.UNICODE)]
+        terms = [term for term in terms if term]
+        if terms:
+            query = query.where(and_(*[
+                or_(*[
+                    field.ilike(f"%{_ilike_fragment(term)}%", escape="\\")
+                    for field in search_fields
+                ])
+                for term in terms
+            ]))
     if municipality:
         query = query.where(OpportunityRecord.current_data["municipio"].as_string().ilike(
             f"%{_ilike_fragment(municipality)}%", escape="\\"))

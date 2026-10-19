@@ -14,6 +14,8 @@ A primeira implementação da Fase 3 acrescenta:
 
 O feed e a busca livre exibem 30 oportunidades por página por padrão. A API aceita tamanhos de página entre 1 e 100.
 
+Na busca livre, cada palavra é procurada nos campos de objeto, informação complementar, órgão, município, modalidade, situação e identificador. A comparação não diferencia maiúsculas/minúsculas nem acentos, e a ordem entre palavras não importa. A interface atualiza a lista após uma pausa curta enquanto o usuário digita; respostas antigas não substituem uma consulta mais recente.
+
 Os critérios do perfil são categorias de licitação mantidas pelo LicitaGoias, além de município, modalidade PNCP, situação e prazo máximo até a abertura. Apenas o nome do perfil aceita digitação. Categoria, município, modalidade, situação e prazo atuam sobre a oportunidade. As categorias são correspondidas pelo texto publicado no objeto e na informação complementar; o sistema não consulta códigos nem itens individuais do edital. Se várias categorias forem selecionadas, basta corresponder a uma delas. Sem categoria, o perfil considera todas as áreas, sujeito aos demais filtros.
 
 Perfis criados com o filtro anterior de produtos/serviços continuam legíveis, mas não usam esses critérios no feed. Eles ficam marcados para revisão e precisam ser salvos novamente com categorias de licitação; ao salvar, os critérios antigos são removidos.
@@ -46,6 +48,6 @@ Não desabilite a confirmação de e-mail e não use o `service_role` nem a senh
 - O feedback é armazenado por organização e não altera regras globais.
 - A atualização é marcada atrasada após 24 horas. Isso é uma indicação operacional fixa nesta primeira versão, não uma garantia de frequência da fonte.
 
-## Estado de validação em 16/10/2026
+## Estado de validação
 
-Em 19/10/2026, o banco avançou para `0009_opportunity_categories`; a coluna de categorias foi conferida por introspecção do schema. A busca, ficha e histórico responderam contra as oportunidades existentes no banco; duas contas Auth foram usadas na interface e o usuário confirmou o isolamento ao alterná-las. Em 16/10/2026, o usuário confirmou que concluiu com sucesso a verificação real de criação/remoção de acompanhamentos, feedback e separação entre contas. O aceite integrado continua dependente de resultados PNCP válidos e da reconciliação da cobertura; o usuário informou que essa consulta ainda não retornou resultados válidos. A interface não inclui fluxo de criar/recuperar senha; SMTP permanece em etapa posterior.
+Em 19/10/2026, o banco avançou para `0009_opportunity_category_profiles`; a coluna de categorias foi conferida por introspecção. A busca, ficha e histórico responderam contra oportunidades persistidas. Duas contas Auth foram usadas na interface e o usuário confirmou o isolamento ao alterná-las; os fluxos de acompanhamento e feedback também foram confirmados manualmente. Testes locais exercitam busca sem acentos/case, paginação, autorização por organização, ingestão idempotente e retomada após falha. A cobertura e a classificação ainda precisam de uma amostra mais ampla e revisão de resultados pelo usuário. O fluxo de cadastro/recuperação por e-mail e SMTP permanece adiado. As alterações recentes de busca precisam ser publicadas e validadas visualmente na aplicação hospedada.

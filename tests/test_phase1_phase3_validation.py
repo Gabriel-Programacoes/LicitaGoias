@@ -5,17 +5,18 @@ from datetime import date
 import pytest
 from fastapi import Depends, Header, HTTPException
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, select, func
+from sqlalchemy import create_engine, event, select, func
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from licitagoias.api.app import app, get_current_user, get_db
 from licitagoias.phase1_db import (
-    Base, Membership, NotificationPreference, OpportunityAlert, OpportunityFeedback,
+    Base, CollectionPageLog, CollectionProgress, CollectionRun, Membership,
+    NotificationPreference, OpportunityAlert, OpportunityFeedback,
     OpportunityFollow, OpportunityRecord, OpportunityVersion, Organization,
     SourceSnapshot, User,
 )
-from licitagoias.phase1_ingestion import save_record
+from licitagoias.phase1_ingestion import save_record, sync_pncp
 
 
 @pytest.fixture
@@ -25,6 +26,12 @@ def db_factory():
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
+    def sqlite_translate(value, source, target):
+        if value is None:
+            return None
+        return value.translate({ord(char): target[index] for index, char in enumerate(source) if index < len(target)})
+
+    event.listen(engine, "connect", lambda connection, _record: connection.create_function("translate", 3, sqlite_translate))
     Base.metadata.create_all(engine)
     return sessionmaker(engine, expire_on_commit=False)
 
@@ -75,6 +82,52 @@ def test_ingestion_is_idempotent_and_versions_observed_change(db_factory):
         assert db.scalar(select(func.count()).select_from(SourceSnapshot)) == 2
 
 
+def test_pncp_collection_resumes_after_interrupted_page(db_factory, monkeypatch):
+    from licitagoias.collectors.pncp import CollectionError, CollectionPage
+
+    monkeypatch.setattr("licitagoias.phase1_ingestion.session_factory", lambda: db_factory)
+
+    class InterruptedCollector:
+        municipio_ibge = None
+        uf = "GO"
+
+        def segments(self):
+            return ("proposta",)
+
+        def map_item(self, raw):
+            return {"external_id": raw["numeroControlePNCP"], "objeto": "Computadores"}
+
+        def iter_pages(self, segment, start_date, end_date, start_page=1):
+            yield CollectionPage(segment, 1, 2, [{"numeroControlePNCP": "resume-1"}])
+            raise CollectionError(segment, 2, "falha simulada após a primeira página")
+
+    class ResumedCollector(InterruptedCollector):
+        def iter_pages(self, segment, start_date, end_date, start_page=1):
+            assert start_page == 2
+            yield CollectionPage(segment, 2, 2, [{"numeroControlePNCP": "resume-2"}])
+
+    start_date, end_date = date(2026, 10, 12), date(2026, 10, 19)
+    with pytest.raises(CollectionError):
+        sync_pncp(InterruptedCollector(), start_date, end_date)
+
+    with db_factory() as db:
+        run = db.scalar(select(CollectionRun))
+        assert run.status == "partial"
+        assert run.id
+        run_id = run.id
+        progress = db.scalar(select(CollectionProgress).where(CollectionProgress.run_id == run_id))
+        assert progress.last_page == 1 and not progress.complete
+
+    resumed = sync_pncp(ResumedCollector(), start_date, end_date, resume_run_id=run_id)
+    with db_factory() as db:
+        progress = db.scalar(select(CollectionProgress).where(CollectionProgress.run_id == run_id))
+        pages = db.scalars(select(CollectionPageLog).where(CollectionPageLog.run_id == run_id)).all()
+        assert resumed.status == "complete"
+        assert progress.last_page == 2 and progress.complete
+        assert [page.page for page in pages] == [1, 2]
+        assert db.scalar(select(func.count()).select_from(OpportunityRecord)) == 2
+
+
 def test_pncp_collector_walks_declared_pages(monkeypatch):
     from licitagoias.collectors.pncp import CollectionPage, PNCPCollector
 
@@ -99,7 +152,53 @@ def test_pncp_collector_walks_declared_pages(monkeypatch):
     assert [page.records[0]["numeroControlePNCP"] for page in pages] == ["one", "two"]
 
 
-def test_phase3_profiles_follows_and_feedback_are_organization_scoped(db_factory, monkeypatch):
+def test_explore_search_ignores_case_accents_and_paginates(db_factory):
+    user = User(auth_subject="explore-subject", email="explore@example.com", email_verified=True)
+    records = [
+        OpportunityRecord(
+            source="PNCP", external_id=f"explore-{index}", identity_method="official",
+            review_required=False, official_status="Divulgada no PNCP", derived_state="unknown",
+            current_hash=str(index) * 64,
+            current_data={"objeto": objeto, "municipio": municipio},
+        )
+        for index, (objeto, municipio) in enumerate([
+            ("MANUTENÇÃO DE COMPUTADORES", "Goiânia"),
+            ("Aquisição de computadores", "Anápolis"),
+            ("Manutenção de impressoras", "Goiânia"),
+        ], start=1)
+    ]
+    with db_factory.begin() as db:
+        db.add(user)
+        db.add_all(records)
+
+    def test_db():
+        with db_factory() as db:
+            yield db
+
+    def test_user():
+        with db_factory() as db:
+            return db.scalar(select(User).where(User.auth_subject == "explore-subject"))
+
+    app.dependency_overrides[get_db] = test_db
+    app.dependency_overrides[get_current_user] = test_user
+    client = TestClient(app)
+    try:
+        result = client.get("/v1/opportunities?q=MANUTENCAO%20computadores")
+        assert result.status_code == 200
+        assert result.json()["total"] == 1
+        assert result.json()["items"][0]["external_id"] == "explore-1"
+
+        first = client.get("/v1/opportunities?page=1&page_size=1").json()
+        second = client.get("/v1/opportunities?page=2&page_size=1").json()
+        assert first["total"] == second["total"] == 3
+        assert first["pages"] == second["pages"] == 3
+        assert len(first["items"]) == len(second["items"]) == 1
+        assert first["items"][0]["id"] != second["items"][0]["id"]
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_phase3_profiles_follows_and_feedback_are_organization_scoped(db_factory):
     with db_factory.begin() as db:
         user_a = User(auth_subject="subject-a", email="a@example.com", email_verified=True)
         user_b = User(auth_subject="subject-b", email="b@example.com", email_verified=True)
@@ -140,17 +239,16 @@ def test_phase3_profiles_follows_and_feedback_are_organization_scoped(db_factory
     try:
         catalog = client.get("/v1/catalog", headers=a)
         assert catalog.status_code == 200
-        assert catalog.json()["product_service_catalog"] == "CATMAT/CATSER"
+        assert catalog.json()["opportunity_categories"]
         invalid = client.post("/v1/interest-profiles", headers=a, json={
-            "name": "Item livre", "product_service_ids": ["termo-inventado"],
+            "name": "Categoria livre", "opportunity_category_ids": ["categoria-inventada"],
         })
         assert invalid.status_code == 422
-        monkeypatch.setattr("licitagoias.api.phase3.resolve_item_ids", lambda ids: {item_id: "Computador portátil" for item_id in ids})
         created = client.post("/v1/interest-profiles", headers=a, json={
-            "name": "Informática", "product_service_ids": ["catmat:12345"],
+            "name": "Informática", "opportunity_category_ids": ["it_and_technology"],
         })
         assert created.status_code == 201
-        assert created.json()["product_service_labels"]["catmat:12345"] == "Computador portátil"
+        assert created.json()["opportunity_category_ids"] == ["it_and_technology"]
         assert len(client.get("/v1/interest-profiles", headers=a).json()) == 1
         assert client.get("/v1/interest-profiles", headers=b).json() == []
 

@@ -25,6 +25,8 @@
   let feedPage = 1;
   let feedMode = new URLSearchParams(location.search).get('feed_view') === 'all' ? 'all' : 'matched';
   let explorePage = 1;
+  let exploreRequestId = 0;
+  let exploreDebounceTimer;
   let activeView = 'feed';
   let toastTimer;
   let sessionGeneration = 0;
@@ -353,6 +355,7 @@
     prev.onclick = () => callback(page - 1); next.onclick = () => callback(page + 1);
   };
   const loadExplore = async (page = 1) => {
+    const requestId = ++exploreRequestId;
     explorePage = page;
     const params = new URLSearchParams(location.search);
     const q = params.get('q') || ''; const municipality = params.get('municipality') || '';
@@ -365,10 +368,11 @@
     try {
       const query=new URLSearchParams(Object.entries({q,municipality,status:statusValue,opening_from:openingFrom,opening_to:openingTo,page,page_size:30}).filter(([,value])=>value!==''&&value!==null&&value!==undefined));
       const result = await api(`/v1/opportunities?${query}`);
+      if(requestId!==exploreRequestId)return;
       setCoverage(result.coverage); $('#explore-total').textContent=result.total.toLocaleString('pt-BR');
       list.innerHTML = result.items.length ? result.items.map(item=>renderOpportunity(item)).join('') : '<div class="empty-state">Nenhum resultado nesta cobertura. Experimente outro termo.</div>';
       renderPagination($('#explore-pagination'), $('#explore-page-label'), $('#explore-prev'), $('#explore-next'), page, result.pages, loadExplore);
-    } catch (error) { list.innerHTML=`<div class="empty-state">${esc(cleanError(error))}</div>`; }
+    } catch (error) { if(requestId===exploreRequestId)list.innerHTML=`<div class="empty-state">${esc(cleanError(error))}</div>`; }
   };
   const loadFollows = async () => {
     const list = $('#follows-list'); list.innerHTML='<div class="loading-state"><span class="loader"></span> Carregando acompanhamentos…</div>';
@@ -613,9 +617,19 @@
   });
   $('#search-form').addEventListener('submit',event=>{
     event.preventDefault();
+    clearTimeout(exploreDebounceTimer);
     const q=$('#search-query').value.trim(),municipality=$('#search-municipality').value,status=$('#search-status').value,opening_from=$('#search-from').value,opening_to=$('#search-to').value;
     if(opening_from&&opening_to&&opening_from>opening_to){showToast('A data inicial precisa ser anterior à data final.','error');return;}
     updateUrl({q,municipality,status,opening_from,opening_to,profile:null});setView('explore');
+  });
+  $('#search-query').addEventListener('input',()=>{
+    clearTimeout(exploreDebounceTimer);
+    exploreDebounceTimer=setTimeout(()=>{
+      if(activeView!=='explore')return;
+      const q=$('#search-query').value.trim(),municipality=$('#search-municipality').value,status=$('#search-status').value,opening_from=$('#search-from').value,opening_to=$('#search-to').value;
+      updateUrl({q,municipality,status,opening_from,opening_to,profile:null});
+      loadExplore(1);
+    },350);
   });
   $('#refresh-feed').addEventListener('click',()=>loadFeed(feedPage));
 

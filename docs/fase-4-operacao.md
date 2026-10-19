@@ -10,7 +10,7 @@
 
 ## Migração do banco
 
-No projeto Supabase conectado, as revisões `0005_phase3_experience`, `0006_phase4_notifications` e `0007_phase4_fk_indexes` já foram aplicadas via MCP; `public.alembic_version` registra `0007_phase4_fk_indexes`. Para outros ambientes, a revisão `0006_phase4_notifications` depende de `0005_phase3_experience`, e `0007_phase4_fk_indexes` adiciona índices cobridores às FKs das duas fases. Aplique-as usando uma credencial administrativa de migração disponível somente no ambiente local. A credencial runtime `licitagoias_app` não tem permissão para alterar `alembic_version` e não deve receber privilégios de DDL.
+No projeto Supabase conectado, as revisões `0005_phase3_experience` a `0009_opportunity_category_profiles` estão registradas em `public.alembic_version`. Para outros ambientes, aplique a cadeia completa usando uma credencial administrativa de migração disponível somente no ambiente de implantação. A credencial runtime `licitagoias_app` não tem permissão para alterar `alembic_version` e não deve receber privilégios de DDL.
 
 ```powershell
 $env:LICITAGOIAS_DATABASE_URL = "postgresql+psycopg://<usuario-de-migracao>:<senha>@<host>:5432/postgres?sslmode=require"
@@ -26,7 +26,7 @@ pip install -e .
 licitagoias-notify --once
 ```
 
-Para operação contínua, execute `licitagoias-notify` como processo separado supervisionado pelo serviço do ambiente. Com o e-mail desativado, ele calcula vencimentos de resumos e pode preencher a fila, mas não envia mensagens. A coleta PNCP continua sendo disparada pelo comando de coleta já existente e deve ser agendada pelo operador; esta fase não instala um scheduler de coleta.
+Para operação contínua, execute `licitagoias-notify` como processo separado supervisionado pelo serviço do ambiente. Com o e-mail desativado, ele calcula vencimentos de resumos e pode preencher a fila, mas não envia mensagens. A coleta PNCP é agendada pelo workflow `.github/workflows/pncp-sync.yml`; ela é independente do worker de notificações.
 
 ## E-mail e Supabase Auth
 
@@ -41,4 +41,4 @@ Configure `LICITAGOIAS_MAIL_WEBHOOK_SECRET` apenas se o provedor tiver webhook e
 - A política de leitura da outbox é destinada ao papel de backend `licitagoias_app`; as tabelas não são expostas aos papéis Data API (`anon`, `authenticated`, `service_role`).
 - SMTP não oferece garantia de exatamente uma entrega: se a conexão cair depois de o servidor aceitar a mensagem, a tentativa pode ser repetida. A chave idempotente impede duplicação na fila, mas não pode resolver a ambiguidade de transporte sem idempotência oferecida pelo provedor.
 - A tela de preferências funciona por membro da organização atual; o modelo permite várias organizações, mas a interface seleciona a primeira associação até existir seletor de espaço.
-- Fase 1/3 precisam ser homologadas antes de tratar estes alertas como operacionais. Nenhuma migração remota foi aplicada nesta implementação.
+- Fase 1/3 precisam ser homologadas antes de tratar estes alertas como operacionais. As migrações remotas estão aplicadas, mas envio SMTP foi deliberadamente adiado pelo usuário e não está habilitado. A Fase 4 permanece em espera até a base e a relevância serem aceitas.

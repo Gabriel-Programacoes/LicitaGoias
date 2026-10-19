@@ -11,13 +11,13 @@ pip install -e ".[dev]"
 ./scripts/run-local.ps1
 ```
 
-A migração `0002_phase2` cria `users`, `organizations`, `memberships` e `audit_events` sem modificar as tabelas da ingestão. O banco remoto já recebeu todas as migrações; execute `alembic upgrade head` apenas para novos bancos ou futuras migrações. A verificação local fica em `GET /v1/health`; o contrato está em `/docs` e `/openapi.json`.
+A migração `0002_phase2` cria `users`, `organizations`, `memberships` e `audit_events` sem modificar as tabelas da ingestão. O banco remoto registra as migrações até `0009_opportunity_category_profiles`; execute `alembic upgrade head` apenas para novos bancos ou futuras migrações. A verificação local fica em `GET /v1/health`; o contrato está em `/docs` e `/openapi.json`.
 
 ### Banco Supabase do projeto LicitaGoias
 
 O projeto Supabase conectado ao Codex tem a referência `mekgyrwzkfpfoavdvwlk` e a origem Auth `https://mekgyrwzkfpfoavdvwlk.supabase.co`. A referência e a URL não são credenciais. A senha do banco e a chave publicável devem ficar somente no ambiente de execução.
 
-Em 15/10/2026, o banco remoto recebeu o esquema até `0007_phase4_fk_indexes`. As revisões `0005`–`0007` acrescentaram busca/acompanhamento e notificações; RLS e política do papel de backend foram verificadas nas tabelas novas. O papel PostgreSQL `licitagoias_app` tem apenas DML necessário nas tabelas de domínio; a senha dele fica fora das migrações.
+Em 19/10/2026, o Supabase registra as revisões `0005`–`0009`, incluindo notificações e categorias de oportunidade. As tabelas públicas estão protegidas por RLS; o papel PostgreSQL `licitagoias_app` tem apenas DML necessário nas tabelas de domínio; a senha dele fica fora das migrações.
 
 As migrações Alembic `0001_phase1` a `0004_backend_role` formam o esquema inicial. A terceira habilita RLS nas tabelas de domínio e na tabela de versões do Alembic, retira privilégios de acesso direto dos papéis de API quando existirem e cria índices para chaves estrangeiras. A quarta cria o papel usado exclusivamente pelo backend, seus privilégios e as políticas RLS que permitem as operações do servidor. A API FastAPI valida o token e a associação à organização antes de usar essa conexão. Não use `licitagoias_app` no navegador ou em clientes públicos.
 
@@ -25,9 +25,9 @@ Para desenvolvimento neste computador, o arquivo `.env` ignorado pelo Git conté
 
 ### Verificação local em 15/10/2026
 
-Com as variáveis do `.env` carregadas no processo, `GET /v1/health` respondeu `200`; a busca no banco remoto retornou 25 oportunidades com cobertura `complete`. Rotas privadas sem token responderam `401`, e OpenAPI respondeu `200`. Depois da validação web, o Supabase contém duas contas Auth confirmadas, dois usuários de domínio, duas organizações e duas memberships. A troca entre contas foi exercitada pela interface; a negação de IDs cruzados ainda precisa de uma verificação autenticada direta pela API, e não há uma implantação separada de homologação.
+Com as variáveis do `.env` carregadas no processo, `GET /v1/health` respondeu `200`; a busca no banco remoto retornou oportunidades e a coleta estadual está agendada pelo GitHub Actions. Rotas privadas sem token responderam `401`, e OpenAPI respondeu `200`. O Supabase contém duas contas Auth confirmadas, dois usuários de domínio, duas organizações e duas memberships. Testes de API com duas identidades simuladas verificam que uma organização não acessa dados privados nem altera a organização da outra; o usuário também confirmou a troca de contas pela interface. Falta um ambiente separado de homologação com credenciais e Auth próprios; o provedor de hospedagem ainda não foi escolhido.
 
-O Supabase Auth está configurado para confirmação de e-mail e aceita redirecionamentos para `http://localhost:3000/**` e `http://127.0.0.1:3000/**`. O `site_url` é `http://localhost:3000`. A interface web ainda não existe; o fluxo de confirmação com retorno ao navegador dependerá dela. Um provedor SMTP próprio e URLs públicas serão necessários antes de abrir o cadastro para usuários reais.
+O Supabase Auth está configurado para confirmação de e-mail e aceita redirecionamentos para localhost. A interface de desenvolvimento existe em `/app`; ainda falta publicar uma URL HTTPS e ajustar os redirecionamentos para homologação/produção. Um provedor SMTP de autenticação é necessário para cadastro público e recuperação de senha; o usuário decidiu adiar esse trabalho até a base ser estabilizada.
 
 ## Fluxo de identidade
 
@@ -37,6 +37,6 @@ Um usuário confirmado chama `POST /v1/organizations` com `{"name":"Empresa Exem
 
 ## CI e implantação
 
-O fluxo `.github/workflows/ci.yml` instala o projeto, sobe PostgreSQL temporário, aplica as migrações e executa as verificações automatizadas. O `Dockerfile` produz a imagem da API. Em homologação, aplique migrações antes de trocar a versão da aplicação e confira `/v1/health` e uma requisição autenticada. Uma reversão da aplicação usa a imagem anterior e mantém o banco na migração nova; não execute `alembic downgrade` automaticamente em produção.
+O fluxo `.github/workflows/ci.yml` instala dependências de desenvolvimento, sobe PostgreSQL temporário, aplica as migrações, executa `pytest` e constrói a imagem da API. Em homologação, aplique migrações antes de trocar a versão da aplicação e confira `/v1/health` e uma requisição autenticada. Uma reversão da aplicação usa a imagem anterior e mantém o banco na migração nova; não execute `alembic downgrade` automaticamente em produção.
 
 Configure URL pública da API, HTTPS e regras de rede no provedor escolhido. Não habilite acesso direto do navegador ao banco de domínio nem exponha chaves de serviço. A API atual consulta o Supabase Auth em toda requisição privada; uma indisponibilidade do Auth retorna 503 e impede acesso privado. Nenhuma implantação externa está automatizada até definir o provedor de hospedagem e as credenciais de homologação.
