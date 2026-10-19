@@ -1,0 +1,49 @@
+name: Sincronização PNCP
+
+on:
+  schedule:
+    # Seis coletas por dia, com horários deslocados para evitar o início da hora.
+    - cron: '17 */4 * * *'
+    # Reconciliação semanal de uma janela maior para capturar publicações atrasadas.
+    - cron: '23 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: pncp-sync-go
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      LICITAGOIAS_ENV: production
+      LICITAGOIAS_DATABASE_URL: ${{ secrets.LICITAGOIAS_DATABASE_URL }}
+      SCHEDULE_EXPRESSION: ${{ github.event.schedule }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install LicitaGoias
+        run: python -m pip install .
+      - name: Collect and store PNCP opportunities
+        shell: bash
+        run: |
+          if [[ -z "$LICITAGOIAS_DATABASE_URL" ]]; then
+            echo "Configure o secret LICITAGOIAS_DATABASE_URL nas configurações do repositório."
+            exit 1
+          fi
+
+          if [[ "$SCHEDULE_EXPRESSION" == "23 6 * * 1" ]]; then
+            LOOKBACK_DAYS=30
+          else
+            LOOKBACK_DAYS=7
+          fi
+
+          END_DATE="$(date -u +%F)"
+          START_DATE="$(date -u -d "$LOOKBACK_DAYS days ago" +%F)"
+          licitagoias sync-pncp --uf GO --start "$START_DATE" --end "$END_DATE"

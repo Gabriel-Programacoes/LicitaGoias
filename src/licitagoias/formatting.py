@@ -23,12 +23,12 @@ def format_date(value: date | None) -> str:
 
 
 def format_opportunity_line(opportunity: Opportunity) -> str:
-    date_value = opportunity.data_fechamento or opportunity.data_abertura
+    date_value = opportunity.data_fechamento
     return f"{shorten_object(opportunity.objeto)} + {format_money(opportunity.valor_estimado)} + {format_date(date_value)}"
 
 
 def format_raw_recent_line(record: dict) -> str:
-    date_value = parse_brazilian_date(record.get("data_fechamento") or record.get("data_abertura"))
+    date_value = parse_brazilian_date(record.get("data_fechamento"))
     value = record.get("valor_estimado")
     money = Decimal(str(value)) if value not in (None, "") else None
     return f"{shorten_object(record.get('objeto', ''))} + {format_money(money)} + {format_date(date_value)}"

@@ -34,7 +34,7 @@ def infer_package(opportunity: Opportunity) -> str:
 
 def deadline_label(opportunity: Opportunity, today: date | None = None) -> str:
     current = today or date.today()
-    target = opportunity.data_fechamento or opportunity.data_abertura
+    target = opportunity.data_fechamento
     if target is None:
         return "Sem prazo informado"
 
@@ -56,7 +56,7 @@ def generate_report_files(
 ) -> ReportPaths:
     output_dir.mkdir(parents=True, exist_ok=True)
     current = today or date.today()
-    sorted_items = sorted(opportunities, key=lambda item: item.data_fechamento or item.data_abertura or date.min)
+    sorted_items = sorted(opportunities, key=lambda item: item.data_fechamento or date.min)
 
     html_path = output_dir / "relatorio_aparecida.html"
     whatsapp_path = output_dir / "whatsapp_aparecida.txt"
@@ -69,7 +69,7 @@ def render_whatsapp_report(opportunities: list[Opportunity], title: str, today: 
     current = today or date.today()
     lines = [f"{title} - {format_date(current)}", ""]
     for index, opportunity in enumerate(opportunities, start=1):
-        close_date = opportunity.data_fechamento or opportunity.data_abertura
+        close_date = opportunity.data_fechamento
         package = PACKAGE_LABELS.get(infer_package(opportunity), "Geral")
         lines.extend(
             [
@@ -279,7 +279,7 @@ def render_package_chips(package_counts: Counter) -> str:
 
 
 def render_opportunity_card(opportunity: Opportunity, today: date) -> str:
-    close_date = opportunity.data_fechamento or opportunity.data_abertura
+    close_date = opportunity.data_fechamento
     link = opportunity.link_edital or opportunity.link_origem
     package = PACKAGE_LABELS.get(infer_package(opportunity), "Geral")
     return f"""

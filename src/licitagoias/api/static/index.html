@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>LicitaGoias — Radar de oportunidades</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.49.0/dist/tabler-icons.min.css">
+  <link rel="stylesheet" href="/assets/app.css?v=38">
+  <script defer src="/assets/app.js?v=35"></script>
+</head>
+<body>
+  <div class="ambient-canvas" aria-hidden="true"></div><div class="ambient-grid" aria-hidden="true"></div>
+  <main id="boot-screen" class="boot-screen" role="status" aria-live="polite">
+    <div class="boot-content"><span class="loader" aria-hidden="true"></span><span>Carregando seu espaço…</span></div>
+  </main>
+  <main id="login-screen" class="login-screen hidden">
+    <section class="login-card glass-panel-strong">
+      <a class="brand" href="/app" aria-label="LicitaGoias início"><span class="brand-mark">L<span>↗</span></span><span>licita<span class="brand-light">goias</span></span></a>
+      <h1>Boas oportunidades<br>começam com <em>clareza.</em></h1>
+      <p class="login-copy">Entre no seu espaço para acompanhar oportunidades públicas alinhadas ao que sua empresa fornece.</p>
+      <form id="login-form" class="stack-form">
+        <label for="email">E-mail</label>
+        <input id="email" name="email" type="email" autocomplete="username" placeholder="voce@empresa.com.br" required>
+        <label for="password">Senha</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Sua senha" required>
+        <button class="button button-dark" type="submit">Acessar minha conta</button>
+      </form>
+      <p id="login-error" class="form-error" role="alert"></p>
+    </section>
+    <aside class="login-art glass-panel" aria-label="LicitaGoias e o estado de Goiás">
+      <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+      <img class="goias-map" src="/assets/goias-map.svg" alt="Contorno de Goiás, com um marcador em Goiânia">
+      <div class="art-title">Encontre o que<br>faz sentido para <i>sua empresa.</i></div>
+    </aside>
+  </main>
+
+  <main id="app-screen" class="app-shell hidden">
+    <header class="context-header glass-panel-strong">
+      <div class="context-brand"><a class="brand" href="/app" aria-label="LicitaGoias início"><span class="brand-mark">L<span>↗</span></span><span>licita<span class="brand-light">goias</span></span></a><div class="context-crumb"><strong id="breadcrumb-label">PARA MINHA EMPRESA</strong></div></div>
+      <div class="workspace-pill"><strong id="organization-name">Sua empresa</strong></div>
+      <div class="context-actions"><button id="quick-search" class="quick-search" type="button" aria-label="Ir para busca rápida"><i class="ti ti-search" aria-hidden="true"></i><span>Buscar oportunidades</span><kbd>/</kbd></button><button id="visual-comfort-toggle" class="comfort-toggle" type="button" aria-pressed="false" aria-label="Ativar conforto visual" title="Ativar conforto visual"><svg class="comfort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h8m4 0h4M4 12h2m4 0h10M4 18h8m4 0h4"/><circle cx="14" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="14" cy="18" r="2"/></svg></button><div class="user-context"><span id="user-email" class="user-email"></span><div class="avatar" id="user-avatar">LG</div><button id="logout-button" class="logout-button" type="button">Sair</button></div></div>
+    </header>
+    <section class="main-column">
+      <div class="content-wrap">
+        <section id="organization-setup" class="setup-panel hidden">
+          <h1>Como sua empresa aparece no radar?</h1><p>Cadastre o nome comercial para começar a configurar seu espaço.</p>
+          <form id="organization-form" class="inline-form" autocomplete="off"><input name="name" autocomplete="off" placeholder="Nome da empresa" minlength="2" maxlength="160" required><button class="button button-dark">Criar espaço</button></form>
+        </section>
+
+        <section id="profile-view" class="view hidden">
+          <div class="page-heading"><div><h1 id="profile-page-title">Perfil de interesse</h1><p class="subheading">Organize os critérios de busca da sua empresa.</p></div><button id="new-profile" class="button button-dark"><i class="ti ti-plus" aria-hidden="true"></i> Criar perfil</button></div>
+          <section id="profile-list-panel" class="profile-list-panel" aria-label="Perfis de interesse">
+            <div id="profile-list" class="profile-list"></div>
+          </section>
+          <section id="profile-editor" class="profile-editor hidden">
+            <form id="profile-form" class="profile-form panel glass-panel-strong" autocomplete="off">
+              <input type="hidden" name="id">
+              <div class="profile-wizard-head"><button id="profile-cancel-top" type="button" class="profile-back-link"><i class="ti ti-arrow-left" aria-hidden="true"></i> Voltar aos perfis</button><span id="profile-step-label" class="profile-step-label">Etapa 1 de 6</span><div class="profile-progress-track" aria-hidden="true"><span id="profile-progress-fill"></span></div></div>
+              <section class="profile-step" data-profile-step="1" aria-labelledby="profile-step-title-1"><div class="profile-step-intro"><span class="profile-step-index">01 / 06</span><h2 id="profile-step-title-1">Como você quer identificar este perfil?</h2><p>Use um nome que ajude sua equipe a reconhecer o tipo de oportunidade buscada.</p></div><label class="profile-name-field">Nome do perfil<input name="name" required maxlength="120" placeholder="Ex.: Tecnologia e suporte"></label></section>
+              <section class="profile-step hidden" data-profile-step="2" aria-labelledby="profile-step-title-2"><div class="profile-step-intro"><span class="profile-step-index">02 / 06</span><h2 id="profile-step-title-2">Quais categorias de licitação fazem sentido?</h2><p>Selecione uma ou mais áreas. A correspondência é feita pelo objeto e pelas informações da licitação, sem consultar itens individuais do edital.</p></div><fieldset class="status-selector opportunity-category-selector" aria-label="Áreas de fornecimento"><div class="category-selector-heading"><span class="category-selector-label">Áreas de fornecimento <span class="optional-label">opcional</span></span><span id="category-selection-count" class="catalog-count">Todas as categorias</span></div><div id="opportunity-category-options" class="status-options category-options"></div><p class="category-selector-note">Ao selecionar mais de uma área, serão exibidas licitações que correspondam a pelo menos uma delas.</p></fieldset></section>
+              <section class="profile-step hidden" data-profile-step="3" aria-labelledby="profile-step-title-3"><div class="profile-step-intro"><span class="profile-step-index">03 / 06</span><h2 id="profile-step-title-3">Em quais municípios você pode atender?</h2><p>Deixe a busca aberta para considerar todos os municípios de Goiás.</p></div><label class="profile-field">Município<select id="profile-municipality" aria-label="Município do perfil"><option value="">Qualquer município da cobertura</option></select></label></section>
+              <section class="profile-step hidden" data-profile-step="4" aria-labelledby="profile-step-title-4"><div class="profile-step-intro"><span class="profile-step-index">04 / 06</span><h2 id="profile-step-title-4">Quais modalidades sua empresa acompanha?</h2><p>Este filtro oficial reduz as oportunidades coletadas fora do seu foco. Sem seleção, serão consideradas todas as modalidades disponíveis.</p></div><fieldset class="status-selector"><legend>Modalidades de contratação</legend><div id="modality-options" class="status-options"></div></fieldset></section>
+              <section class="profile-step hidden" data-profile-step="5" aria-labelledby="profile-step-title-5"><div class="profile-step-intro"><span class="profile-step-index">05 / 06</span><h2 id="profile-step-title-5">Qual prazo de abertura funciona para você?</h2><p>Este filtro considera o tempo até a abertura ou disputa. Você pode deixar sem limite.</p></div><label class="profile-field">Prazo máximo para abertura<select id="profile-deadline-days" name="deadline_days" aria-label="Prazo máximo para abertura"><option value="">Sem limite</option><option value="7">Até 7 dias</option><option value="15">Até 15 dias</option><option value="30">Até 30 dias</option><option value="60">Até 60 dias</option><option value="90">Até 90 dias</option><option value="180">Até 180 dias</option><option value="365">Até 365 dias</option></select></label></section>
+              <section class="profile-step hidden" data-profile-step="6" aria-labelledby="profile-step-title-6"><div class="profile-step-intro"><span class="profile-step-index">06 / 06</span><h2 id="profile-step-title-6">Quais situações interessam?</h2><p>Selecione as situações que deseja acompanhar. Sem seleção, serão consideradas todas.</p></div><fieldset class="status-selector"><legend>Situações de interesse</legend><div id="status-options" class="status-options"></div></fieldset></section>
+              <p id="legacy-profile-warning" class="legacy-profile-warning hidden" role="status"></p>
+              <div class="profile-wizard-actions"><button id="profile-cancel" class="button button-outline" type="button">Cancelar</button><button id="profile-step-back" class="button button-outline" type="button" disabled><i class="ti ti-chevron-left" aria-hidden="true"></i> Voltar</button><button id="profile-step-next" class="button button-dark" type="button">Continuar <i class="ti ti-chevron-right" aria-hidden="true"></i></button><button id="profile-save" class="button button-dark hidden" type="submit"><i class="ti ti-check" aria-hidden="true"></i> Salvar perfil</button></div>
+            </form>
+          </section>
+        </section>
+
+        <section id="feed-view" class="view">
+          <div class="page-heading feed-heading"><div><h1>Para sua empresa</h1><p id="feed-subheading" class="subheading">Oportunidades organizadas pelo seu perfil de interesse.</p><div class="feed-context"><span>Perfil</span><span id="profile-name-label">Sem perfil</span></div></div><div class="heading-actions"><button id="edit-profile" class="button button-outline" type="button"><i class="ti ti-switch-horizontal" aria-hidden="true"></i> Trocar perfil</button><button id="refresh-feed" class="icon-button" aria-label="Atualizar resultados" title="Atualizar"><i class="ti ti-refresh" aria-hidden="true"></i></button></div></div>
+          <div id="data-notice" class="data-notice hidden"></div>
+          <div class="summary-grid"><article class="summary-card"><small><i class="ti ti-briefcase" aria-hidden="true"></i> Oportunidades</small><strong id="result-total">—</strong><span id="result-total-label">compatíveis com o perfil</span></article><article class="summary-card"><small><i class="ti ti-coin" aria-hidden="true"></i> Valor estimado</small><strong id="feed-volume">—</strong><span>na página atual</span></article><article class="summary-card"><small><i class="ti ti-target" aria-hidden="true"></i> Compatíveis</small><strong id="feed-match">—</strong><span>na cobertura coletada</span></article><article class="summary-card"><small><i class="ti ti-calendar-event" aria-hidden="true"></i> Aberturas próximas</small><strong id="feed-upcoming">—</strong><span>nos próximos 7 dias</span></article></div>
+          <div class="feed-toolbar"><div class="result-count"><strong id="feed-list-title">Oportunidades compatíveis</strong><span id="feed-list-description">Classificadas pelos critérios do perfil</span></div><div class="feed-view-toggle" role="group" aria-label="Classificação das oportunidades"><button type="button" data-feed-view="matched" aria-pressed="true">Compatíveis</button><button type="button" data-feed-view="all" aria-pressed="false">Todas</button></div></div>
+          <div id="opportunity-list" class="opportunity-list"><div class="loading-state"><span class="loader"></span> Consultando oportunidades coletadas…</div></div>
+          <div id="pagination" class="pagination hidden"><button id="prev-page" class="button button-outline"><i class="ti ti-chevron-left" aria-hidden="true"></i> Anterior</button><span id="page-label"></span><button id="next-page" class="button button-outline">Próxima <i class="ti ti-chevron-right" aria-hidden="true"></i></button></div>
+        </section>
+
+        <section id="explore-view" class="view hidden">
+          <div class="page-heading"><div><h1>Explorar oportunidades</h1><p class="subheading">Pesquise pelo objeto, órgão ou modalidade.</p></div></div>
+          <form id="search-form" class="search-bar" autocomplete="off">
+            <i class="ti ti-search search-icon" aria-hidden="true"></i>
+            <input id="search-query" autocomplete="off" aria-label="Pesquisar objeto, órgão ou modalidade" placeholder="Ex.: manutenção de computadores" maxlength="200">
+            <select id="search-municipality" data-custom-select data-searchable="true" aria-label="Filtrar por município"><option value="">Qualquer município</option></select>
+            <select id="search-status" data-custom-select aria-label="Filtrar por situação"><option value="">Qualquer situação</option></select>
+            <div id="date-picker-from" class="date-filter custom-date-picker" data-date-picker="from">
+              <input id="search-from" type="hidden" aria-label="Abertura desde">
+              <button class="date-trigger" type="button" data-calendar-trigger="from" aria-label="Escolher data: abertura desde" aria-controls="calendar-from" aria-haspopup="dialog" aria-expanded="false"><span data-date-display="from">Abertura desde</span><i class="ti ti-calendar-event" aria-hidden="true"></i></button>
+              <div id="calendar-from" class="date-popover hidden" data-calendar="from" role="dialog" aria-label="Calendário: abertura desde"></div>
+            </div>
+            <div id="date-picker-to" class="date-filter custom-date-picker" data-date-picker="to">
+              <input id="search-to" type="hidden" aria-label="Abertura até">
+              <button class="date-trigger" type="button" data-calendar-trigger="to" aria-label="Escolher data: abertura até" aria-controls="calendar-to" aria-haspopup="dialog" aria-expanded="false"><span data-date-display="to">Abertura até</span><i class="ti ti-calendar-event" aria-hidden="true"></i></button>
+              <div id="calendar-to" class="date-popover hidden" data-calendar="to" role="dialog" aria-label="Calendário: abertura até"></div>
+            </div>
+            <button class="button button-dark" type="submit">Buscar</button>
+          </form>
+          <div class="feed-toolbar"><div class="result-count"><strong id="explore-total">—</strong><span>resultados na base</span></div></div>
+          <div id="explore-list" class="opportunity-list"><div class="empty-state">Digite um termo ou município para pesquisar.</div></div>
+          <div id="explore-pagination" class="pagination hidden"><button id="explore-prev" class="button button-outline"><i class="ti ti-chevron-left" aria-hidden="true"></i> Anterior</button><span id="explore-page-label"></span><button id="explore-next" class="button button-outline">Próxima <i class="ti ti-chevron-right" aria-hidden="true"></i></button></div>
+        </section>
+
+        <section id="follows-view" class="view hidden">
+          <div class="page-heading"><div><h1>Acompanhadas</h1><p class="subheading">Oportunidades que você salvou para acompanhar.</p></div></div>
+          <div id="follows-list" class="opportunity-list"><div class="loading-state"><span class="loader"></span> Carregando acompanhamentos…</div></div>
+        </section>
+
+        <section id="alerts-view" class="view hidden">
+          <div class="page-heading"><div><h1>Alertas</h1><p class="subheading">Alterações nas oportunidades acompanhadas.</p></div><button id="refresh-alerts" class="button button-outline"><i class="ti ti-refresh" aria-hidden="true"></i> Atualizar</button></div>
+          <div class="alerts-layout"><div class="panel profile-form glass-panel-strong"><h2>Notificações por e-mail</h2><p class="subheading">O envio fica sujeito à configuração do serviço de e-mail.</p>
+            <label><input id="pref-email" type="checkbox"> Ativar notificações por e-mail</label>
+            <div class="form-row"><label>Resumo<select id="pref-frequency"><option value="off">Desativado</option><option value="daily">Diário</option><option value="weekly">Semanal</option></select></label><label>Horário (0–23)<input id="pref-hour" type="number" min="0" max="23" value="8"></label></div>
+            <label>Fuso horário<input id="pref-timezone" value="America/Sao_Paulo" maxlength="80"></label>
+            <label><input id="pref-critical" type="checkbox"> Receber alertas críticos imediatamente</label>
+            <div class="form-actions"><span id="pref-feedback" class="inline-status"></span><button id="save-prefs" class="button button-dark" type="button">Salvar preferências</button></div>
+          </div>
+          <section class="alerts-history glass-panel"><div class="alerts-history-heading"><h2>Atividade recente</h2></div><div id="alerts-list" class="opportunity-list"><div class="loading-state">Carregando alertas…</div></div></section></div>
+        </section>
+      </div>
+      <footer class="main-footer"><span>Dados públicos. Confirme condições e prazos no edital oficial.</span><a href="/v1/health" target="_blank" rel="noreferrer">Estado da API</a></footer>
+    </section>
+    <nav class="ios-dock-wrapper" aria-label="Navegação principal"><div class="ios-dock"><a class="nav-item active" href="#feed" data-view="feed" aria-label="Para minha empresa"><i class="ti ti-briefcase-2" aria-hidden="true"></i><b>Para minha empresa</b><small id="dock-feed-count" class="dock-badge">—</small></a><a class="nav-item" href="#explorar" data-view="explore"><i class="ti ti-search" aria-hidden="true"></i><b>Explorar</b></a><a class="nav-item" href="#acompanhadas" data-view="follows" aria-label="Acompanhadas"><i class="ti ti-bookmark" aria-hidden="true"></i><b>Acompanhadas</b><small id="dock-follows-count" class="dock-badge">0</small></a><a class="nav-item" href="#perfil" data-view="profile"><i class="ti ti-adjustments-horizontal" aria-hidden="true"></i><b>Perfil de interesse</b></a><a class="nav-item" href="#alerts" data-view="alerts"><i class="ti ti-bell" aria-hidden="true"></i><b>Alertas</b><small id="dock-alert-status" class="dock-status-dot" aria-label="Alertas"></small></a></div></nav>
+  </main>
+
+  <dialog id="profile-switch-dialog" class="profile-switch-dialog" aria-labelledby="profile-switch-title"><div class="profile-switch-heading"><div><p class="eyebrow">RADAR DA SUA EMPRESA</p><h2 id="profile-switch-title">Trocar perfil</h2><p>Escolha um perfil para atualizar as oportunidades exibidas.</p></div><button class="profile-switch-close" type="button" aria-label="Fechar"><i class="ti ti-x" aria-hidden="true"></i></button></div><div id="profile-switch-list" class="profile-switch-list"></div><div class="profile-switch-footer"><button id="profile-switch-manage" class="button button-outline" type="button"><i class="ti ti-settings" aria-hidden="true"></i> Gerenciar perfis</button></div></dialog>
+  <dialog id="detail-dialog" class="detail-dialog"><form method="dialog"><button class="dialog-close" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></form><div id="detail-content"></div></dialog>
+  <dialog id="feedback-dialog" class="feedback-dialog" aria-labelledby="feedback-dialog-title" aria-describedby="feedback-dialog-description">
+    <form id="feedback-form">
+      <div class="feedback-dialog-heading"><span class="feedback-dialog-icon"><i class="ti ti-message-report" aria-hidden="true"></i></span><div><p class="eyebrow">AJUDE A MELHORAR SUA BUSCA</p><h2 id="feedback-dialog-title">Por que esta oportunidade não é relevante?</h2><p id="feedback-dialog-description">Sua resposta ajuda a ajustar as oportunidades exibidas para sua empresa.</p></div></div>
+      <fieldset class="feedback-reasons"><legend>Escolha o principal motivo</legend>
+        <label><input type="radio" name="feedback_reason" value="wrong_product" required><span><i class="ti ti-package" aria-hidden="true"></i> Produto ou serviço diferente</span></label>
+        <label><input type="radio" name="feedback_reason" value="location"><span><i class="ti ti-map-pin" aria-hidden="true"></i> Localização não atendida</span></label>
+        <label><input type="radio" name="feedback_reason" value="deadline"><span><i class="ti ti-calendar-x" aria-hidden="true"></i> Prazo incompatível</span></label>
+        <label><input type="radio" name="feedback_reason" value="status"><span><i class="ti ti-progress-alert" aria-hidden="true"></i> Situação da oportunidade</span></label>
+        <label><input type="radio" name="feedback_reason" value="other"><span><i class="ti ti-dots" aria-hidden="true"></i> Outro motivo</span></label>
+      </fieldset>
+      <div class="feedback-dialog-actions"><button id="feedback-cancel" class="button button-outline" type="button">Cancelar</button><button class="button button-dark" type="submit"><i class="ti ti-send" aria-hidden="true"></i> Enviar feedback</button></div>
+    </form>
+  </dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

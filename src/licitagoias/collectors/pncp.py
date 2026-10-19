@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import logging
 import time
+from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Any
+from typing import Any, Iterator
 
 import requests
 from requests import RequestException
@@ -10,8 +12,24 @@ from requests import RequestException
 from licitagoias.collectors.base import Collector
 
 APARECIDA_GOIANIA_IBGE = "5201405"
-DEFAULT_MODALIDADE_CODES = (6, 8, 9, 5)
+DEFAULT_MODALIDADE_CODES = tuple(range(1, 15))
 REQUEST_TIMEOUT_SECONDS = 20
+logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class CollectionPage:
+    segment: str
+    page: int
+    total_pages: int
+    records: list[dict[str, Any]]
+
+
+class CollectionError(RuntimeError):
+    def __init__(self, segment: str, page: int, reason: str):
+        self.segment = segment
+        self.page = page
+        super().__init__(f"{segment}, página {page}: {reason}")
 
 
 class PNCPCollector(Collector):
@@ -20,121 +38,132 @@ class PNCPCollector(Collector):
     def __init__(
         self,
         base_url: str = "https://pncp.gov.br/api/consulta",
-        municipio_ibge: str = APARECIDA_GOIANIA_IBGE,
+        municipio_ibge: str | None = None,
         uf: str = "GO",
+        modalidades: tuple[int, ...] = DEFAULT_MODALIDADE_CODES,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.municipio_ibge = municipio_ibge
         self.uf = uf
+        self.modalidades = modalidades
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": "licitagoias/0.1 contato: coleta-publica"})
 
     def collect(self, start_date: date, end_date: date) -> list[dict]:
-        items = self._collect_open_proposals(end_date)
-        items.extend(self._collect_recent_publications(start_date, end_date))
-        return [self._map_item(item) for item in self._dedupe_items(items)]
+        unique: dict[str, dict] = {}
+        for segment in self.segments():
+            for page in self.iter_pages(segment, start_date, end_date):
+                for raw in page.records:
+                    key = raw.get("numeroControlePNCP") or repr(raw)
+                    unique[str(key)] = self.map_item(raw)
+        return list(unique.values())
 
     def collect_recent(self, limit: int = 5, days_back: int = 90, end_date: date | None = None) -> list[dict]:
         end = end_date or date.today()
-        start = end - timedelta(days=days_back)
-        records = self.collect(start, end)
+        records = self.collect(end - timedelta(days=days_back), end)
         return sorted(records, key=lambda record: record.get("data_publicacao") or "", reverse=True)[:limit]
 
-    def _collect_open_proposals(self, end_date: date) -> list[dict[str, Any]]:
-        params = {
+    def segments(self) -> tuple[str, ...]:
+        return ("proposta", *(f"publicacao:{code}" for code in self.modalidades))
+
+    def iter_pages(
+        self, segment: str, start_date: date, end_date: date, start_page: int = 1
+    ) -> Iterator[CollectionPage]:
+        if start_page < 1 or start_date > end_date:
+            raise ValueError("Página ou janela de datas inválida")
+        params: dict[str, Any] = {
             "dataFinal": end_date.strftime("%Y%m%d"),
             "uf": self.uf,
-            "codigoMunicipioIbge": self.municipio_ibge,
-            "pagina": 1,
             "tamanhoPagina": 50,
         }
-        return self._get_paged("/v1/contratacoes/proposta", params, max_pages=1)
+        if self.municipio_ibge:
+            params["codigoMunicipioIbge"] = self.municipio_ibge
+        if segment == "proposta":
+            path = "/v1/contratacoes/proposta"
+        elif segment.startswith("publicacao:") and segment.split(":", 1)[1].isdigit() and int(segment.split(":", 1)[1]) in self.modalidades:
+            path = "/v1/contratacoes/publicacao"
+            params["dataInicial"] = start_date.strftime("%Y%m%d")
+            params["codigoModalidadeContratacao"] = int(segment.split(":", 1)[1])
+        else:
+            raise ValueError(f"Segmento desconhecido: {segment}")
 
-    def _collect_recent_publications(self, start_date: date, end_date: date) -> list[dict[str, Any]]:
-        items: list[dict[str, Any]] = []
-        for modalidade_code in DEFAULT_MODALIDADE_CODES:
-            time.sleep(0.2)
-            params = {
-                "dataInicial": start_date.strftime("%Y%m%d"),
-                "dataFinal": end_date.strftime("%Y%m%d"),
-                "codigoModalidadeContratacao": modalidade_code,
-                "uf": self.uf,
-                "codigoMunicipioIbge": self.municipio_ibge,
-                "pagina": 1,
-                "tamanhoPagina": 50,
-            }
-            items.extend(self._get_paged("/v1/contratacoes/publicacao", params, max_pages=1, latest_page=True))
-        return items
-
-    def _get_paged(
-        self,
-        path: str,
-        params: dict[str, Any],
-        max_pages: int = 1,
-        latest_page: bool = False,
-    ) -> list[dict[str, Any]]:
-        items: list[dict[str, Any]] = []
-        page = 1
+        page_number = start_page
         while True:
-            params["pagina"] = page
+            params["pagina"] = page_number
+            response = self._request(path, params, segment, page_number)
+            if response.status_code == 204:
+                if page_number != 1:
+                    raise CollectionError(segment, page_number, "204 antes do fim da paginação")
+                yield CollectionPage(segment, page_number, 1, [])
+                return
+            try:
+                payload = response.json()
+            except ValueError as exc:
+                raise CollectionError(segment, page_number, "JSON inválido") from exc
+            if not isinstance(payload, dict) or not isinstance(payload.get("data"), list):
+                raise CollectionError(segment, page_number, "formato inesperado")
+            try:
+                total_pages = int(payload["totalPaginas"])
+            except (KeyError, ValueError, TypeError) as exc:
+                raise CollectionError(segment, page_number, "totalPaginas inválido") from exc
+            if total_pages < page_number or total_pages < 1 or not all(isinstance(row, dict) for row in payload["data"]):
+                raise CollectionError(segment, page_number, "paginação ou registros inválidos")
+            logger.info("pncp_page segment=%s page=%s total=%s count=%s", segment, page_number, total_pages, len(payload["data"]))
+            yield CollectionPage(segment, page_number, total_pages, payload["data"])
+            if page_number >= total_pages:
+                return
+            page_number += 1
+
+    def _request(self, path: str, params: dict[str, Any], segment: str, page: int) -> requests.Response:
+        for attempt in range(4):
             try:
                 response = self.session.get(f"{self.base_url}{path}", params=params, timeout=REQUEST_TIMEOUT_SECONDS)
-            except RequestException:
-                return items
-            if response.status_code == 429:
-                retry_after = int(response.headers.get("Retry-After") or 1)
-                time.sleep(min(retry_after, 5))
-                try:
-                    response = self.session.get(f"{self.base_url}{path}", params=params, timeout=REQUEST_TIMEOUT_SECONDS)
-                except RequestException:
-                    return items
-            if response.status_code == 204:
-                return items
-            if response.status_code == 429:
-                return items
-            try:
-                response.raise_for_status()
-            except RequestException:
-                return items
-            payload = response.json()
-            page_items = payload.get("data", payload if isinstance(payload, list) else [])
-            items.extend(page_items)
-
-            total_pages = int(payload.get("totalPaginas") or page)
-            if latest_page and page == 1 and total_pages > 1:
-                page = total_pages
+            except RequestException as exc:
+                if attempt == 3:
+                    raise CollectionError(segment, page, f"falha de rede: {type(exc).__name__}") from exc
+                time.sleep(2 ** attempt)
                 continue
-            if page >= total_pages or page >= max_pages:
-                return items
-            page += 1
+            if response.status_code == 429 or 500 <= response.status_code < 600:
+                if attempt == 3:
+                    raise CollectionError(segment, page, f"HTTP {response.status_code}")
+                retry_after = response.headers.get("Retry-After", "")
+                delay = int(retry_after) if retry_after.isdigit() else 2 ** attempt
+                time.sleep(min(delay, 30))
+                continue
+            if response.status_code != 204:
+                try:
+                    response.raise_for_status()
+                except RequestException as exc:
+                    raise CollectionError(segment, page, f"HTTP {response.status_code}") from exc
+            return response
+        raise AssertionError("limite de tentativas inalcançável")
 
-    def _dedupe_items(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        unique: dict[str, dict[str, Any]] = {}
-        for item in items:
-            key = item.get("numeroControlePNCP") or "|".join(
-                str(item.get(field, "")) for field in ("processo", "objetoCompra", "dataPublicacaoPncp")
-            )
-            unique.setdefault(key, item)
-        return list(unique.values())
-
-    def _map_item(self, item: dict[str, Any]) -> dict[str, Any]:
+    def map_item(self, item: dict[str, Any]) -> dict[str, Any]:
+        orgao = item.get("orgaoEntidade") or {}
+        unidade = item.get("unidadeOrgao") or {}
         link = item.get("linkSistemaOrigem") or item.get("linkProcessoEletronico") or self._build_pncp_detail_url(item)
         return {
             "fonte": self.source_name,
-            "orgao_comprador": item.get("orgaoEntidade", {}).get("razaoSocial") or item.get("orgaoNome"),
+            "external_id": item.get("numeroControlePNCP"),
+            "orgao_cnpj": orgao.get("cnpj"),
+            "ano_compra": item.get("anoCompra"),
+            "unidade_codigo": unidade.get("codigoUnidade"),
+            "orgao_comprador": orgao.get("razaoSocial") or item.get("orgaoNome"),
             "objeto": item.get("objetoCompra") or item.get("objeto"),
-            "data_abertura": item.get("dataAberturaProposta") or item.get("dataPublicacaoPncp"),
-            "data_fechamento": item.get("dataEncerramentoProposta") or item.get("dataPublicacaoPncp"),
+            "informacao_complementar": item.get("informacaoComplementar") or item.get("informacaoComplementarCompra"),
+            "data_abertura": item.get("dataAberturaProposta"),
+            "data_fechamento": item.get("dataEncerramentoProposta"),
             "data_publicacao": item.get("dataPublicacaoPncp"),
             "valor_estimado": item.get("valorTotalEstimado"),
             "link_edital": link,
             "link_origem": item.get("linkSistemaOrigem"),
-            "municipio": item.get("unidadeOrgao", {}).get("municipioNome"),
-            "uf": item.get("unidadeOrgao", {}).get("ufSigla") or "GO",
+            "municipio": unidade.get("municipioNome"),
+            "uf": unidade.get("ufSigla") or self.uf,
             "modalidade": item.get("modalidadeNome"),
+            "modalidade_codigo": item.get("codigoModalidadeContratacao"),
             "status": item.get("situacaoCompraNome"),
             "numero_processo": item.get("processo"),
-            "texto_bruto": str(item),
+            "texto_bruto": "",
         }
 
     def _build_pncp_detail_url(self, item: dict[str, Any]) -> str:

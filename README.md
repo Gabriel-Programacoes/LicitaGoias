@@ -11,6 +11,7 @@ O projeto hoje funciona como um pipeline batch: recebe dados brutos em CSV ou co
 - Coletor PNCP para oportunidades recentes de Aparecida de Goiania.
 - Relatorio HTML e texto pronto para WhatsApp com oportunidades recentes.
 - Persistencia SQLite via modulo interno `storage.py`.
+- Ingestao PNCP persistente em PostgreSQL, com paginas, checkpoints, snapshots e versoes.
 - Testes automatizados para limpeza, classificacao, formatacao, relatorios e exportacao.
 
 ## Estrutura
@@ -111,6 +112,20 @@ Saidas padrao:
 - `data/reports/relatorio_aparecida.html`
 - `data/reports/whatsapp_aparecida.txt`
 
+## Ingestao persistente (Fase 1)
+
+Configure `LICITAGOIAS_DATABASE_URL` para um banco PostgreSQL com driver `psycopg`, execute `alembic upgrade head` e inicie uma coleta com `licitagoias sync-pncp --start AAAA-MM-DD --end AAAA-MM-DD`. Consulte `licitagoias collection-runs` para ver o estado e use `--resume-run ID` com os mesmos parametros para retomar uma execucao parcial. O comando `licitagoias opportunity-history --external-id ID_PNCP` mostra as versoes observadas. Veja [docs/fase-1-operacao.md](docs/fase-1-operacao.md) para preparacao, importacao SQLite e limites de cobertura.
+
+## API e organizacoes (Fase 2)
+
+A API FastAPI valida tokens do Supabase Auth e controla acesso por vinculo com a organizacao. Configure as variaveis de `.env.example`, execute `alembic upgrade head` e inicie com `uvicorn licitagoias.api.app:app --reload`. O contrato OpenAPI fica em `/docs`. Veja [docs/fase-2-operacao.md](docs/fase-2-operacao.md) para o fluxo de autenticacao, ambientes e implantacao.
+
+Neste computador, a configuracao de desenvolvimento local fica em `.env` (ignorado pelo Git). Inicie a API com `./scripts/run-local.ps1`. O banco remoto no Supabase ja recebeu as migracoes; execute `alembic upgrade head` apenas ao preparar outro banco ou aplicar uma migracao nova.
+
+## Busca e acompanhamento (Fase 3)
+
+A interface local fica em `/app`; ela usa a FastAPI como única camada de acesso aos dados. Consulte [docs/fase-3-operacao.md](docs/fase-3-operacao.md) para aplicar a migração, provisionar uma conta confirmada e conhecer os limites desta primeira entrega.
+
 ## Regras de curadoria
 
 O pipeline remove oportunidades que:
@@ -135,3 +150,6 @@ Uma mesma oportunidade pode ser replicada em mais de um pacote quando o texto co
 ## Documentacao complementar
 
 Veja [docs/plano-ferramenta-licitacoes-goias.md](docs/plano-ferramenta-licitacoes-goias.md) para contexto do produto, arquitetura e plano de evolucao.
+## Fase 4 — alertas e notificações
+
+Veja [docs/fase-4-operacao.md](docs/fase-4-operacao.md) para migração, worker e configuração futura de e-mail. O envio permanece desativado por padrão; o SMTP de notificações da aplicação é separado do SMTP de autenticação do Supabase.
